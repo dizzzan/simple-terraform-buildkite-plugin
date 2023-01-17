@@ -1,0 +1,39 @@
+name: simple-terraform
+description: Shortcuts for generating pipeline steps using terraform in docker for a simple workflows.
+author: https://github.com/dizzzan
+requirements: ["bash", "docker"]
+configuration:
+  properties:
+    path:
+      type: string
+    docker_version:
+      type: string
+    terraform_version:
+      type: string
+    validate:
+      type: boolean
+    init:
+      type: boolean
+    plan:
+      type: boolean
+    apply:
+      type: boolean
+    destroy:
+      type: boolean
+    block:
+      type: boolean
+    wait:
+      type: boolean
+    validate_args:
+      type: string
+    plan_args:
+      type: string
+    init_args:
+      type: string
+    apply_args:
+      type: string
+    destroy_args:
+      type: string
+  required:
+    - path
+  additionalProperties: false

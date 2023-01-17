@@ -1,0 +1,12 @@
+version: '2'
+services:
+  lint:
+    image: buildkite/plugin-linter
+    command: ['--id', 'dizzzan/simple-terraform']
+    volumes:
+      - ".:/plugin:ro"
+  test:
+    image: buildkite/plugin-tester
+    command: ['--id', 'dizzzan/simple-terraform']
+    volumes:
+      - ".:/plugin:ro"
