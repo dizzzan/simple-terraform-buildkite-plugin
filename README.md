@@ -11,7 +11,7 @@ steps:
   - label: "Terraform"
     plugins:
     - dizzzan/simple-terraform#v1.0.0:
-        path: "my_terraform_directory"
+        path: "my-terraform-directory"
         apply: true
         block: ":terraform: Confirm Apply"
         group: "Test Group"
@@ -25,38 +25,59 @@ steps:
     steps:
 
       - label: "Terraform init"
-        command: "validate -input=false" # override args with plan_args
+        command: "init -input=false"
         plugins:
         - docker
             image: "hashicorp/terraform:latest"
+            mount-workdir: false
+            workdir: /workdir
+            propagate-environment: true
+            propagate-aws-auth-tokens: true
             volumes: 
-              - my_terraform_directory:/workdir
+              - my-terraform-directory:/workdir
       
       - wait
 
-      - label: "Terraform apply"
-        command: "apply -auto-approve -input=false" 
-
+      - label: "Terraform validate"
+        command: "validate"
+        plugins:
+        - docker
+            image: "hashicorp/terraform:latest"
+            mount-workdir: false
+            workdir: /workdir
+            propagate-environment: true
+            propagate-aws-auth-tokens: true
+            volumes: 
+              - my-terraform-directory:/workdir
+      
       - label: "Terraform plan"
         command: "plan -out=tfout.plan -input=false" 
         plugins:
-        - docker
-            image: "hashicorp/terraform:latest" # use terraform_version if required, otherwise latest tag is used.
+        - docker 
+            image: "hashicorp/terraform:latest"
+            mount-workdir: false
+            workdir: /workdir
+            propagate-environment: true
+            propagate-aws-auth-tokens: true
             volumes: 
-              - my_terraform_directory:/workdir
+              - my-terraform-directory:/workdir
 
-      - label: "Terraform plan"
-        command: "plan -out=tfout.plan -input=false" # override args with plan_args
-        plugins:
-        - docker # use docker_version if needed, otherwise latest plugin is used.
-            image: "hashicorp/terraform:latest" # use terraform_version if required, otherwise latest tag is used.
+      - block: ":terraform: Confirm Apply"
+
+      - label: "Terraform apply"
+        command: "apply -auto-approve -input=false" 
+            image: "hashicorp/terraform:latest"
+            mount-workdir: false
+            workdir: /workdir
+            propagate-environment: true
+            propagate-aws-auth-tokens: true
             volumes: 
-              - my_terraform_directory:/workdir
-      
+              - my-terraform-directory:/workdir
+```      
 
 ## Configuration
 
-### `path` (optional, Required, string)
+### `path` (required, string)
 Relative path to the terraform configuration
 - Use '.' for the build directory
 - This directory is mounted as /workdir in the Terraform container
@@ -69,42 +90,54 @@ If specified, add all steps to a group using of this name
 Whether to run a `terraform validate` step
 > Default: true
 
-### `init` (optional, boolean, default=true)
+### `init` (optional, boolean)
 Whether to run a `terraform init` step
+> Default: true
 
-### `plan` (optional, boolean, default=true)
+### `plan` (optional, boolean)
 Whether to run a `terraform plan` step
+> Default: true
 
-### `wait` (optional, boolean, default=true)
+### `wait` (optional, boolean)
 Whether to add `wait` between each (init, validate, plan, apply) step
-
-### `block` (optional, string, default=null)
+> Default: true
+ 
+### `block` (optional, string)
 If set, add a `block` before `apply` or `destroy` steps using the specified message.
+> Default: null
 
-### `init_args` (optional, string, default: "-input=false")
+### `init-args` (optional, string)
 Arguments to pass to `terraform init`
+> Default: -input=false
 
-### validate_args (string, default: null)
+### `validate-args` (optional, string)
 Arguments to pass to `terraform validate`
+> Default: null
 
-### plan_args (string, default="-out=tfplan.out -input=false")
+### `plan-args` (optional, string)
 Arguments to pass to `terraform plan`
+> Default: -out=tfplan.out -input=false
 
-### apply_args (string, default: "-auto-approve -input=false tfplan.out")
+### `apply-args` (optional, string)
 Arguments to pass to `terraform apply`
+> Default: -auto-approve -input=false tfplan.out
 
-### destroy_args(string, default="-auto-approve -input=false tfplan.out")
+### destroy-args(string)
 Arguments to pass to `terraform destroy`
+> Default: -auto-approve -input=false tfplan.out
 
-### `terraform_version` (optional, string, default: "latest")
+### `terraform-version` (optional, string)
 Version tag of the terraform docker image to use
+> Default: latest
 
-### `docker_version` (optional, string, default:null)
+### `docker-version` (optional, string)
 Version of the Buildkite docker plugin to use. Leave null to use latest.
+> Default: null
 
-### `propagate_aws_auth_tokens` (optional, boolean, default:true)
-Use the [`propagate_aws_auth_tokens` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-aws-auth-tokens-optional-boolean)
+### `propagate-aws-auth-tokens` (optional, boolean)
+Use the [`propagate-aws-auth-tokens` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-aws-auth-tokens-optional-boolean)
+> Default: true
 
-### `propagate_environment` (optional, boolean, default:true)
-Use the [`propagate_environment` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-environment-optional-boolean)
-
+### `propagate-environment` (optional, boolean)
+Use the [`propagate-environment` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-environment-optional-boolean)
+> Default: true
