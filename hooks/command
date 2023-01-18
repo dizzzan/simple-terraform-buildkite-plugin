@@ -33,7 +33,7 @@ INDENT_TOP=$([ "$GROUP" ] && echo "    " || echo "  ")
 INDENT=$([ "$GROUP" ] && echo "      " || echo "  ")
 
 WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")$'\n\n'
-BLOCK_STEP=$'\n'$([ "$BLOCK" ] && echo $'\n'${INDENT}'- block: "'${BLOCK}$'"\n' || echo $'\n\n')
+BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
 OUT=$'steps:\n'
 
 get_plugin_block() {

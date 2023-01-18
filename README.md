@@ -1,6 +1,6 @@
 # Simple Terraform Buildkite Plugin
 
-A plugin for generating simple terraform workflow pipeline steps via terraform in docker container.
+A Buildkite plugin for generating terraform workflow pipeline steps via terraform in docker container.
 
 ## Example
 Add the following to your `pipeline.yml`:
