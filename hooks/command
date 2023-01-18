@@ -41,7 +41,8 @@ get_plugin_block() {
 cat << EOF
 ${INDENT}  plugins:
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
-${INDENT}      command: "$1"
+${INDENT}      command: 
+${INDENT}        - "$1"
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
 ${INDENT}        - ${TF_PATH}:/work
