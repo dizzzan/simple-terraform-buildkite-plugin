@@ -37,12 +37,11 @@ WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")
 BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
 OUT=$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])
 
-get_plugin_block() {
+get_docker_block() {
 cat << EOF
+${INDENT}  command: "$1"
 ${INDENT}  plugins:
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
-${INDENT}      command: 
-${INDENT}        - "$1"
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
 ${INDENT}        - ${TF_PATH}:/work
@@ -65,7 +64,7 @@ fi
 if [ "$TF_INIT" = "true" ]; then
   OUT+="${INDENT}- label: Terraform init"
   OUT+=$'\n'
-  OUT+=$(get_plugin_block "init ${TF_INIT_ARGS}")
+  OUT+=$(get_docker_block "init ${TF_INIT_ARGS}")
 fi
 
 OUT+=$WAIT_STEP
@@ -73,7 +72,7 @@ OUT+=$WAIT_STEP
 if [ "$TF_VALIDATE" = "true" ]; then
   OUT+="${INDENT}- label: Terraform validate"
   OUT+=$'\n'
-  OUT+=$(get_plugin_block "validate ${TF_VALIDATE_ARGS}")
+  OUT+=$(get_docker_block "validate ${TF_VALIDATE_ARGS}")
 fi
 
 OUT+=$WAIT_STEP
@@ -81,7 +80,7 @@ OUT+=$WAIT_STEP
 if [ "$TF_PLAN" = "true" ]; then
   OUT+="${INDENT}- label: Terraform plan"
   OUT+=$'\n'
-  OUT+=$(get_plugin_block "plan ${TF_PLAN_ARGS}")
+  OUT+=$(get_docker_block "plan ${TF_PLAN_ARGS}")
 fi
 
 if [ "$TF_APPLY" = "true" ]; then
@@ -94,7 +93,7 @@ if [ "$TF_APPLY" = "true" ]; then
 
   OUT+="${INDENT}- label: Terraform apply"
   OUT+=$'\n'
-  OUT+=$(get_plugin_block "apply ${TF_APPLY_ARGS}")
+  OUT+=$(get_docker_block "apply ${TF_APPLY_ARGS}")
 fi
 
 echo "$OUT" 
