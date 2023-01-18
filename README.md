@@ -1,7 +1,6 @@
-# buildkite-plugin-foreach
+# Simple Terraform Buildkite Plugin
 
-A plugin for reducing duplication in buildkite pipelines.
-After producing the pipeline, a `buildkite-agent pipeline upload` will be performed to ship the generated pipeline.
+A plugin for generating simple terraform workflow pipeline steps via terraform in docker container.
 
 ## Example
 Add the following to your `pipeline.yml`:
@@ -17,9 +16,9 @@ steps:
         group: "Test Group"
 ```
 
-This will yield a set of steps approximately like:
-```yml
+This will yield a pipeline approximately like:
 
+```yml
 steps:
   - group: "Test Group"
     steps:
@@ -27,53 +26,59 @@ steps:
       - label: "Terraform init"
         command: "init -input=false"
         plugins:
-        - docker
+        - docker:
             image: "hashicorp/terraform:latest"
-            mount-workdir: false
-            workdir: /workdir
+            mount-checkout: false
+            workdir: /work
             propagate-environment: true
             propagate-aws-auth-tokens: true
             volumes: 
-              - my-terraform-directory:/workdir
+              - my-terraform-directory:/work
       
       - wait
 
       - label: "Terraform validate"
         command: "validate"
         plugins:
-        - docker
+        - docker:
             image: "hashicorp/terraform:latest"
-            mount-workdir: false
-            workdir: /workdir
+            mount-checkout: false
+            workdir: /work
             propagate-environment: true
             propagate-aws-auth-tokens: true
             volumes: 
-              - my-terraform-directory:/workdir
+              - my-terraform-directory:/work
       
+      - wait 
+
       - label: "Terraform plan"
-        command: "plan -out=tfout.plan -input=false" 
+        command: "plan -out=tfplan.out -input=false && terraform show tfplan.out" 
         plugins:
-        - docker 
+        - docker:
             image: "hashicorp/terraform:latest"
-            mount-workdir: false
-            workdir: /workdir
+            mount-checkout: false
+            workdir: /work
             propagate-environment: true
             propagate-aws-auth-tokens: true
             volumes: 
-              - my-terraform-directory:/workdir
+              - my-terraform-directory:/work
 
       - block: ":terraform: Confirm Apply"
 
       - label: "Terraform apply"
         command: "apply -auto-approve -input=false" 
+        plugins:
+        - docker:
             image: "hashicorp/terraform:latest"
-            mount-workdir: false
-            workdir: /workdir
+            mount-checkout: false
+            workdir: /work
             propagate-environment: true
             propagate-aws-auth-tokens: true
             volumes: 
-              - my-terraform-directory:/workdir
+              - my-terraform-directory:/work
 ```      
+... which will then be uploaded by the agent via `buildkite-agent pipeline upload` 
+
 
 ## Configuration
 
@@ -122,7 +127,7 @@ Arguments to pass to `terraform plan`
 Arguments to pass to `terraform apply`
 > Default: -auto-approve -input=false tfplan.out
 
-### destroy-args(string)
+### `destroy-args` (string)
 Arguments to pass to `terraform destroy`
 > Default: -auto-approve -input=false tfplan.out
 
@@ -141,3 +146,7 @@ Use the [`propagate-aws-auth-tokens` flag for the Docker plugin](https://github.
 ### `propagate-environment` (optional, boolean)
 Use the [`propagate-environment` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-environment-optional-boolean)
 > Default: true
+
+### `debug` (optional, boolean)
+Instead of uploading the pipeline, it will be printed out only. No steps will be run.
+> Default: false

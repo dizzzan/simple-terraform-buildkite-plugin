@@ -5,8 +5,7 @@ services:
     command: ['--id', 'dizzzan/simple-terraform']
     volumes:
       - ".:/plugin:ro"
-  test:
+  tests:
     image: buildkite/plugin-tester
-    command: ['--id', 'dizzzan/simple-terraform']
     volumes:
       - ".:/plugin:ro"

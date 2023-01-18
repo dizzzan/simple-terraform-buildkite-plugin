@@ -6,13 +6,15 @@ configuration:
   properties:
     path:
       type: string
-    docker_version:
+    group:
       type: string
-    terraform_version:
+    docker-version:
       type: string
-    validate:
-      type: boolean
+    terraform-version:
+      type: string
     init:
+      type: boolean
+    validate:
       type: boolean
     plan:
       type: boolean
@@ -21,19 +23,25 @@ configuration:
     destroy:
       type: boolean
     block:
-      type: boolean
+      type: string
     wait:
       type: boolean
     validate_args:
       type: string
     plan_args:
       type: string
-    init_args:
+    init-args:
       type: string
-    apply_args:
+    apply-args:
       type: string
-    destroy_args:
+    destroy-args:
       type: string
+    propagate-aws-auth-tokens:
+      type: boolean
+    propagate-environment:
+      type: boolean
+    debug:
+      type: boolean
   required:
     - path
   additionalProperties: false
