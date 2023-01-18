@@ -1,3 +1,3 @@
 updates:
-  - path: README.md
-    pattern: "dizzzan/simple-terraform#(v.*):"
+- path: README.md
+  pattern: "dizzzan/simple-terraform#(v.*):"
