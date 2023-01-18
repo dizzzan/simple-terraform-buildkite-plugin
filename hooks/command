@@ -98,7 +98,7 @@ fi
 
 echo "$OUT" 
 
-if [ ! "$PLUGIN_DEBUG" ]; then
+if [ "$PLUGIN_DEBUG" != "true" ]; then
   echo "Uploading pipeline..."
   echo "$OUT" | buildkite-agent pipeline upload
 fi
