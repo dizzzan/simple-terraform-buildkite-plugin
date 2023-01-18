@@ -47,6 +47,7 @@ ${INDENT}      volumes:
 ${INDENT}        - ${TF_PATH}:/work
 ${INDENT}      mount-checkout: false
 ${INDENT}      workdir: /work
+${INDENT}      shell: false
 ${INDENT}      propagate-environment: ${PROPAGATE_ENVIRONMENT}
 ${INDENT}      propagate-aws-auth-tokens: ${PROPAGATE_AWS_AUTH_TOKENS}
 EOF
