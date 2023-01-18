@@ -24,17 +24,18 @@ TF_APPLY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_APPLY_ARGS:-${DEFAULT_APPLY_A
 TF_DESTROY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DESTROY_ARGS:-${DEFAULT_DESTROY_ARGS}}"
 PROPAGATE_AWS_AUTH_TOKENS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_AWS_CREDENTIALS:-true}"
 PROPAGATE_ENVIRONMENT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_ENVIRONMENT:-true}"
+SUPPRESS_STEPS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_SUPPRESS_STEPS:-false}"
 
 TF_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_VERSION:-latest}"
 DOCKER_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DOCKER_VERSION:-latest}"
 DOCKER_PLUGIN_VERSION=$([ "$DOCKER_VERSION" = "latest" ] && echo "" || echo "#v${DOCKER_VERSION}")
+TOP_INDENT=$([ "$SUPPRESS_STEPS" ] && echo "  " || echo "")
 
-INDENT_TOP=$([ "$GROUP" ] && echo "    " || echo "  ")
-INDENT=$([ "$GROUP" ] && echo "      " || echo "  ")
+INDENT=$([ "$GROUP" ] && echo "${TOP_INDENT}    " || echo "${TOP_INDENT}")
 
 WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")$'\n\n'
 BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
-OUT=$'steps:\n'
+OUT=$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])
 
 get_plugin_block() {
 cat << EOF
@@ -53,8 +54,12 @@ EOF
 
 if [ "$GROUP" ]; then
   OUT+='  - group: "'${GROUP}$'"\n'
-  OUT+=$'    steps:\n'
+  if [ "$SUPPRESS_STEPS" ]; then
+    OUT+=$'    steps:\n'
+  fi
 fi
+
+
 
 if [ "$TF_INIT" = "true" ]; then
   OUT+="${INDENT}- label: Terraform init"
