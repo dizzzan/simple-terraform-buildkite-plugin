@@ -83,13 +83,14 @@ if [ "$TF_PLAN" = "true" ]; then
   OUT+=$(get_plugin_block "plan ${TF_PLAN_ARGS}")
 fi
 
-if [ -n "$BLOCK" ]; then
-  OUT+=$BLOCK_STEP
-else 
-  OUT+=$WAIT_STEP
-fi
-
 if [ "$TF_APPLY" = "true" ]; then
+
+  if [ -n "$BLOCK" ]; then
+    OUT+=$BLOCK_STEP
+  else 
+    OUT+=$WAIT_STEP
+  fi
+
   OUT+="${INDENT}- label: Terraform apply"
   OUT+=$'\n'
   OUT+=$(get_plugin_block "apply ${TF_APPLY_ARGS}")
@@ -98,5 +99,6 @@ fi
 echo "$OUT" 
 
 if [ ! "$PLUGIN_DEBUG" ]; then
+  echo "Uploading pipeline..."
   echo "$OUT" | buildkite-agent pipeline upload
 fi
