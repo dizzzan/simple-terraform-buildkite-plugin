@@ -8,6 +8,8 @@ configuration:
       type: string
     group:
       type: string
+    queue:
+      type: string
     docker-version:
       type: string
     terraform-version:

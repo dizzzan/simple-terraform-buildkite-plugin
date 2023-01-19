@@ -8,7 +8,8 @@ DEFAULT_APPLY_ARGS="-input=false -auto-approve tfplan.out"
 DEFAULT_DESTROY_ARGS="-input=false -auto-approve"
 
 PLUGIN_DEBUG="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DEBUG:-false}"
-TF_PATH="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PATH}"
+MOUNTDIR="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_MOUNTDIR:-.}"
+WORKDIR="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_WORKDIR:-}"
 GROUP="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_GROUP:-}"
 TF_VALIDATE="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_VALIDATE:-true}"
 TF_INIT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_INIT:-true}"
@@ -35,7 +36,9 @@ INDENT=$([ "$GROUP" ] && echo "${TOP_INDENT}    " || echo "${TOP_INDENT}")
 
 WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")$'\n\n'
 BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
-OUT=$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])
+OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
+
+UID="$(id -u)"
 
 get_docker_block() {
 cat << EOF
@@ -44,13 +47,18 @@ ${INDENT}  plugins:
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
-${INDENT}        - ${TF_PATH}:/work
+${INDENT}        - ${MOUNTDIR}:/work
 ${INDENT}      mount-checkout: false
-${INDENT}      workdir: /work
+${INDENT}      workdir: /work/${WORKDIR}
 ${INDENT}      shell: false
 ${INDENT}      propagate-environment: ${PROPAGATE_ENVIRONMENT}
 ${INDENT}      propagate-aws-auth-tokens: ${PROPAGATE_AWS_AUTH_TOKENS}
+${INDENT}      user: "${UID}"
 EOF
+if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE:-}" ]]; then
+  echo "${INDENT}      agents:"
+  echo "${INDENT}        queue: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE}"
+fi
 }
 
 if [ "$GROUP" ]; then
@@ -59,8 +67,6 @@ if [ "$GROUP" ]; then
     OUT+=$'    steps:\n'
   fi
 fi
-
-
 
 if [ "$TF_INIT" = "true" ]; then
   OUT+="${INDENT}- label: Terraform init"

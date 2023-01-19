@@ -147,9 +147,14 @@ Use the [`propagate-aws-auth-tokens` flag for the Docker plugin](https://github.
 Use the [`propagate-environment` flag for the Docker plugin](https://github.com/buildkite-plugins/docker-buildkite-plugin#propagate-environment-optional-boolean)
 > Default: true
 
+### `queue` (optional, string)
+Tag the queue on the generated docker step
+> Default: null
+
 ### `suppress-steps` (optional, boolean)
 Suppress `steps:` from the pipeline output
 > Default: false
+> 
 ### `debug` (optional, boolean)
 Instead of uploading the pipeline, it will be printed out only. No steps will be run.
 > Default: false
