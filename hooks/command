@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -eu -o pipefail
 
+env 
+
 DEFAULT_INIT_ARGS="-input=false"
 DEFAULT_VALIDATE_ARGS=""
 DEFAULT_PLAN_ARGS="-input=false -out=tfplan.out"

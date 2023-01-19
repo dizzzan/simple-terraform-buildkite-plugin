@@ -48,4 +48,4 @@ configuration:
       type: boolean
   required:
     - path
-  additionalProperties: false
+  additionalProperties: true
