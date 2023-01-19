@@ -43,10 +43,10 @@ OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
 BK_UID="$(id -u)"
 
 get_docker_block() {
-  if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}" ]]; then
+  if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}" ]]; then
     ASSUME_ROLE_PLUGIN=<<EOF
 ${INDENT}  - dizzzan/aws-assume-role:
-${INDENT}      role: "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}"
+${INDENT}      role: "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}"
 EOF
   fi
 cat <<EOF
@@ -73,10 +73,9 @@ if [ "$GROUP" ]; then
   fi
 fi
 
-
 if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE:-}" ]]; then
-  echo "${INDENT}  agents:"
-  echo "${INDENT}    queue: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE}"
+  OUT+="${INDENT}  agents:"
+  OUT+="${INDENT}    queue: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE}"
 fi
 
 if [ "$TF_INIT" = "true" ]; then
