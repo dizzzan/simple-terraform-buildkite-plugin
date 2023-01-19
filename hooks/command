@@ -43,11 +43,16 @@ OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
 BK_UID="$(id -u)"
 
 get_docker_block() {
-cat << EOF
+  if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}" ]]; then
+    $ASSUME_ROLE_PLUGIN=<<EOF
+${INDENT}  - dizzzan/aws-assume-role:
+${INDENT}      role: "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}"
+EOF
+  fi
+cat <<EOF
 ${INDENT}  command: "$1"
 ${INDENT}  plugins:
-${INDENT}  - dizzzan/aws-assume-role:
-${INDENT}      role: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}"
+${ASSUME_ROLE_PLUGIN}
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
