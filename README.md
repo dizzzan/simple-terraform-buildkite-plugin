@@ -151,6 +151,10 @@ Use the [`propagate-environment` flag for the Docker plugin](https://github.com/
 Tag the queue on the generated docker step
 > Default: null
 
+### `assume-role` (optional, string)
+Assume a role for the docker terraform step using aws-assume-role plugin 
+> Default: null
+
 ### `suppress-steps` (optional, boolean)
 Suppress `steps:` from the pipeline output
 > Default: false

@@ -40,12 +40,14 @@ WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")
 BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
 OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
 
-UID="$(id -u)"
+BK_UID="$(id -u)"
 
 get_docker_block() {
 cat << EOF
 ${INDENT}  command: "$1"
 ${INDENT}  plugins:
+${INDENT}  - dizzzan/aws-assume-role:
+${INDENT}      role: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_ASSUME_ROLE:-}"
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
@@ -55,7 +57,7 @@ ${INDENT}      workdir: /work/${WORKDIR}
 ${INDENT}      shell: false
 ${INDENT}      propagate-environment: ${PROPAGATE_ENVIRONMENT}
 ${INDENT}      propagate-aws-auth-tokens: ${PROPAGATE_AWS_AUTH_TOKENS}
-${INDENT}      user: "${UID}"
+${INDENT}      user: "${BK_UID}"
 EOF
 if [[ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE:-}" ]]; then
   echo "${INDENT}      agents:"

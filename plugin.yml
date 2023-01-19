@@ -46,6 +46,8 @@ configuration:
       type: boolean
     debug:
       type: boolean
+    assume-role:
+      type: string
   required:
     - path
   additionalProperties: true
