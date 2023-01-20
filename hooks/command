@@ -44,15 +44,26 @@ BK_UID="$(id -u)"
 
 get_docker_block() {
   if [ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}" ]; then
-    ASSUME_ROLE_PLUGIN=<<EOF
+    local ASSUME_BLOCK=$(cat <<EOF
 ${INDENT}  - dizzzan/aws-assume-role:
 ${INDENT}      role: "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}"
 EOF
+    )
+
   fi
+  if [ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE:-}" ]; then
+    local QUEUE_BLOCK=$(cat <<EOF
+${INDENT}  agents:
+${INDENT}    queue: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE}
+EOF
+    )
+  fi
+
 cat <<EOF
 ${INDENT}  command: "$1"
+${QUEUE_BLOCK:-}
 ${INDENT}  plugins:
-${ASSUME_ROLE_PLUGIN:-}
+${ASSUME_BLOCK:-}
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
 ${INDENT}      volumes: 
@@ -73,43 +84,31 @@ if [ -n "$GROUP" ]; then
   fi
 fi
 
-if [ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE:-}" ]; then
-  OUT+="${INDENT}  agents:"
-  OUT+=$'\n'
-  OUT+="${INDENT}    queue: ${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_QUEUE}"
-  OUT+=$'\n'
-fi
-
 if [ "$TF_INIT" = "true" ]; then
   OUT+="${INDENT}- label: Terraform init"
   OUT+=$'\n'
   OUT+=$(get_docker_block "init ${TF_INIT_ARGS}")
 fi
 
-OUT+=$WAIT_STEP
-
 if [ "$TF_VALIDATE" = "true" ]; then
+  OUT+=$WAIT_STEP
   OUT+="${INDENT}- label: Terraform validate"
   OUT+=$'\n'
   OUT+=$(get_docker_block "validate ${TF_VALIDATE_ARGS}")
 fi
 
-OUT+=$WAIT_STEP
-
 if [ "$TF_PLAN" = "true" ]; then
+  OUT+=$WAIT_STEP
   OUT+="${INDENT}- label: Terraform plan"
   OUT+=$'\n'
   OUT+=$(get_docker_block "plan ${TF_PLAN_ARGS}")
 fi
 
 if [ "$TF_APPLY" = "true" ]; then
-
+  OUT+=$WAIT_STEP
   if [ -n "$BLOCK" ]; then
     OUT+=$BLOCK_STEP
-  else 
-    OUT+=$WAIT_STEP
   fi
-
   OUT+="${INDENT}- label: Terraform apply"
   OUT+=$'\n'
   OUT+=$(get_docker_block "apply ${TF_APPLY_ARGS}")
