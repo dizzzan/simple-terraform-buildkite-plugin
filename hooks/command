@@ -61,7 +61,7 @@ get_artifact_block() {
       echo "${INDENT}      compressed: terraform"${TAGDASH}".tgz"
       echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      download: \"deploy/roots/sandbox/plan"${TAGDASH}".tfplan\""
+      echo "${INDENT}      download: \"${path}/plan"${TAGDASH}".tfplan\""
       ;;
     esac
 }

@@ -1,6 +1,6 @@
 # Simple Terraform Buildkite Plugin
 
-A Buildkite plugin for generating terraform workflow pipeline steps via terraform in docker container.
+A Buildkite plugin for taking the monotony out of writing typical terraform workflow pipelines.
 
 ## Example
 Add the following to your `pipeline.yml`:
@@ -14,68 +14,103 @@ steps:
         apply: true
         block: ":terraform: Confirm Apply"
         group: "Test Group"
+        assume-role: "test-role"
+        queue: "test-queue"
 ```
 
 This will yield a pipeline approximately like:
 
 ```yml
-steps:
-  - group: "Test Group"
-    steps:
+- group: "Terraform"
+  steps:
+    - label: ":terraform: Init "
+      agents:
+        queue: test-queue
+      plugins:
+      - gantry-ml/aws-assume-role-in-current-account:
+          role: "assumed-role"
+          duration: "1800"
+      - docker:
+          image: "hashicorp/terraform:latest"
+          propagate-environment: true
+          propagate-aws-auth-tokens: true
+          command:
+            - -chdir=terraform
+            - init
+      - artifacts:
+          compressed: terraform.tgz
+          upload: [ "terraform/.terraform", "terraform/.terraform.lock.hcl" ]
 
-      - label: "Terraform init"
-        command: "init -input=false"
-        plugins:
-        - docker:
-            image: "hashicorp/terraform:latest"
-            mount-checkout: false
-            workdir: /work
-            propagate-environment: true
-            propagate-aws-auth-tokens: true
-            volumes: 
-              - my-terraform-directory:/work
-      
-      - wait
+    - wait
 
-      - label: "Terraform validate"
-        command: "validate"
-        plugins:
-        - docker:
-            image: "hashicorp/terraform:latest"
-            mount-checkout: false
-            workdir: /work
-            propagate-environment: true
-            propagate-aws-auth-tokens: true
-            volumes: 
-              - my-terraform-directory:/work
-      
-      - wait 
+    - label: ":terraform: Validate "
+      agents:
+        queue: test-queue
+      plugins:
+      - gantry-ml/aws-assume-role-in-current-account:
+          role: "assumed-role"
+          duration: "1800"
+      - docker:
+          image: "hashicorp/terraform:latest"
+          propagate-environment: true
+          propagate-aws-auth-tokens: true
+          command:
+            - -chdir=terraform
+            - validate
+      - artifacts:
+          compressed: terraform.tgz
+          download: [ "terraform/.terraform", "terraform/.terraform.lock.hcl" ]
 
-      - label: "Terraform plan"
-        command: "plan -out=tfplan.out -input=false && terraform show tfplan.out" 
-        plugins:
-        - docker:
-            image: "hashicorp/terraform:latest"
-            mount-checkout: false
-            workdir: /work
-            propagate-environment: true
-            propagate-aws-auth-tokens: true
-            volumes: 
-              - my-terraform-directory:/work
+    - wait
 
-      - block: ":terraform: Confirm Apply"
+    - label: ":terraform: Plan "
+      agents:
+        queue: test-queue
+      plugins:
+      - gantry-ml/aws-assume-role-in-current-account:
+          role: "assumed-role"
+          duration: "1800"
+      - docker:
+          image: "hashicorp/terraform:latest"
+          propagate-environment: true
+          propagate-aws-auth-tokens: true
+          command:
+            - -chdir=terraform
+            - plan
+            - -input=false
+            - -out=plan.tfplan
+      - artifacts:
+          compressed: terraform.tgz
+          download: [ "terraform/.terraform", "terraform/.terraform.lock.hcl" ]
+      artifact_paths:
+        - "terraform/plan.tfplan"
 
-      - label: "Terraform apply"
-        command: "apply -auto-approve -input=false" 
-        plugins:
-        - docker:
-            image: "hashicorp/terraform:latest"
-            mount-checkout: false
-            workdir: /work
-            propagate-environment: true
-            propagate-aws-auth-tokens: true
-            volumes: 
-              - my-terraform-directory:/work
+    - wait
+
+    - block: "Confirm Apply "
+
+    - label: ":terraform: Apply "
+      agents:
+        queue: test-queue
+      plugins:
+      - gantry-ml/aws-assume-role-in-current-account:
+          role: "assumed-role"
+          duration: "1800"
+      - docker:
+          image: "hashicorp/terraform:latest"
+          propagate-environment: true
+          propagate-aws-auth-tokens: true
+          command:
+            - -chdir=terraform
+            - apply
+            - -auto-approve
+            - -input=false
+            - plan.tfplan
+      - artifacts:
+          compressed: terraform.tgz
+          download: [ "terraform/.terraform", "terraform/.terraform.lock.hcl" ]
+      - artifacts:
+          download: "terraform/plan.tfplan"
 ```      
 ... which will then be uploaded by the agent via `buildkite-agent pipeline upload` 
 
