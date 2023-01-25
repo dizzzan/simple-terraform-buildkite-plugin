@@ -1,17 +1,7 @@
 #!/usr/bin/env bash
-set -eu -o pipefail
-
-env 
-
-DEFAULT_INIT_ARGS="-input=false"
-DEFAULT_VALIDATE_ARGS=""
-DEFAULT_PLAN_ARGS="-input=false -out=tfplan.out"
-DEFAULT_APPLY_ARGS="-input=false -auto-approve tfplan.out"
-DEFAULT_DESTROY_ARGS="-input=false -auto-approve"
+set -euo pipefail
 
 PLUGIN_DEBUG="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DEBUG:-false}"
-MOUNTDIR="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_MOUNTDIR:-.}"
-WORKDIR="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_WORKDIR:-}"
 GROUP="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_GROUP:-}"
 TF_VALIDATE="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_VALIDATE:-true}"
 TF_INIT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_INIT:-true}"
@@ -20,11 +10,11 @@ TF_APPLY="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_APPLY:-false}"
 TF_DESTROY="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DESTROY:-false}"
 BLOCK="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_BLOCK:-false}"
 WAIT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_WAIT:-true}"
-TF_INIT_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_INIT_ARGS:-${DEFAULT_INIT_ARGS}}"
-TF_VALIDATE_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_VALIDATE_ARGS:-${DEFAULT_VALIDATE_ARGS}}"
-TF_PLAN_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PLAN_ARGS:-${DEFAULT_PLAN_ARGS}}"
-TF_APPLY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_APPLY_ARGS:-${DEFAULT_APPLY_ARGS}}"
-TF_DESTROY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DESTROY_ARGS:-${DEFAULT_DESTROY_ARGS}}"
+TF_INIT_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_INIT_ARGS:-}"
+TF_VALIDATE_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_VALIDATE_ARGS:-}"
+TF_PLAN_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PLAN_ARGS:-}"
+TF_APPLY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_APPLY_ARGS:-}"
+TF_DESTROY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DESTROY_ARGS:-}"
 PROPAGATE_AWS_AUTH_TOKENS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_AWS_CREDENTIALS:-true}"
 PROPAGATE_ENVIRONMENT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_ENVIRONMENT:-true}"
 SUPPRESS_STEPS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_SUPPRESS_STEPS:-false}"
@@ -32,9 +22,10 @@ SUPPRESS_STEPS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_SUPPRESS_STEPS:-false}"
 TF_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_VERSION:-latest}"
 DOCKER_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DOCKER_VERSION:-latest}"
 DOCKER_PLUGIN_VERSION=$([ "$DOCKER_VERSION" = "latest" ] && echo "" || echo "#v${DOCKER_VERSION}")
-TOP_INDENT=$([ "$SUPPRESS_STEPS" ] && echo "  " || echo "")
 
+TOP_INDENT=$([ "$SUPPRESS_STEPS" ] && echo "  " || echo "")
 INDENT=$([ "$GROUP" ] && echo "${TOP_INDENT}    " || echo "${TOP_INDENT}")
+PLAN_FILE="plan.tfplan"
 
 WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")$'\n\n'
 BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
@@ -42,11 +33,99 @@ OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
 
 BK_UID="$(id -u)"
 
+
+get_artifact_block() {
+  local command="${1}"
+  local path="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PATH:-}"
+  case $command in 
+    init)
+      echo "${INDENT}  - artifacts:"
+      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      upload: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
+      ;;
+    validate)
+      echo "${INDENT}  - artifacts:"
+      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
+      ;;
+    plan)
+      echo "${INDENT}  - artifacts:"
+      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
+      echo "${INDENT}  artifact_paths:"
+      echo "${INDENT}    - \"${path}/plan.tfplan\""
+      ;;
+    apply)
+      echo "${INDENT}  - artifacts:"
+      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
+      echo "${INDENT}  - artifacts:"
+      echo "${INDENT}      download: \"deploy/roots/sandbox/plan.tfplan\""
+      ;;
+    esac
+}
+
+
+get_docker_command() {
+  local command="${1}"
+  local path="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PATH:-}"
+  
+  echo "${INDENT}      command:"
+  if [ -n "$path" ]; then
+    echo "${INDENT}        - -chdir=${path}"
+  fi
+  case $command in 
+    init)
+      echo "${INDENT}        - init"
+      if [ -n "${TF_INIT_ARGS}" ]; then
+        echo "${INDENT}        - ${TF_INIT_ARGS}"
+      fi
+      echo "${INDENT}        - -input=false"
+      ;;
+    validate)
+      echo "${INDENT}        - validate"
+      if [ -n "${TF_VALIDATE_ARGS}" ]; then
+        echo "${INDENT}        - ${TF_VALIDATE_ARGS}"
+      fi
+      
+      ;;
+    plan)
+      echo "${INDENT}        - plan"
+      if [ -n "${TF_PLAN_ARGS}" ]; then
+        echo "${INDENT}        - ${TF_PLAN_ARGS}"
+      fi
+      echo "${INDENT}        - -input=false"
+      echo "${INDENT}        - -out=plan.tfplan"
+      ;;
+    apply)
+      echo "${INDENT}        - apply"
+      if [ -n "${TF_APPLY_ARGS}" ]; then
+        echo "${INDENT}        - ${TF_APPLY_ARGS}"
+      fi
+      echo "${INDENT}        - -auto-approve"
+      echo "${INDENT}        - -input=false"
+      echo "${INDENT}        - plan.tfplan"
+      
+      ;;
+    destroy)
+      echo "${INDENT}        - destroy"
+      if [ -n "${TF_DESTROY_ARGS}" ]; then
+        echo "${INDENT}        - ${TF_DESTROY_ARGS}"
+      fi
+      echo "${INDENT}        - -auto-approve"
+      echo "${INDENT}        - -input=false"
+      ;;
+  esac
+}
+
 get_docker_block() {
+  local COMMAND_BLOCK=$(get_docker_command "$1")
+  local ARTIFACT_BLOCK=$(get_artifact_block "$1")
   if [ -n "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}" ]; then
     local ASSUME_BLOCK=$(cat <<EOF
-${INDENT}  - dizzzan/aws-assume-role:
+${INDENT}  - gantry-ml/aws-assume-role-in-current-account:
 ${INDENT}      role: "${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_ASSUME_ROLE:-}"
+${INDENT}      duration: "1800"
 EOF
     )
 
@@ -60,22 +139,19 @@ EOF
   fi
 
 cat <<EOF
-${INDENT}  command: "$1"
 ${QUEUE_BLOCK:-}
 ${INDENT}  plugins:
 ${ASSUME_BLOCK:-}
 ${INDENT}  - docker${DOCKER_PLUGIN_VERSION}:
 ${INDENT}      image: "hashicorp/terraform:${TF_VERSION}"
-${INDENT}      volumes: 
-${INDENT}        - ${MOUNTDIR}:/work
-${INDENT}      mount-checkout: false
-${INDENT}      workdir: /work/${WORKDIR}
-${INDENT}      shell: false
 ${INDENT}      propagate-environment: ${PROPAGATE_ENVIRONMENT}
 ${INDENT}      propagate-aws-auth-tokens: ${PROPAGATE_AWS_AUTH_TOKENS}
-${INDENT}      user: "${BK_UID}"
+${COMMAND_BLOCK:-}
+${ARTIFACT_BLOCK:-}
 EOF
+
 }
+
 
 if [ -n "$GROUP" ]; then
   OUT+='  - group: "'${GROUP}$'"\n'
@@ -87,21 +163,21 @@ fi
 if [ "$TF_INIT" = "true" ]; then
   OUT+="${INDENT}- label: Terraform init"
   OUT+=$'\n'
-  OUT+=$(get_docker_block "init ${TF_INIT_ARGS}")
+  OUT+=$(get_docker_block "init")
 fi
 
 if [ "$TF_VALIDATE" = "true" ]; then
   OUT+=$WAIT_STEP
-  OUT+="${INDENT}- label: Terraform validate"
+  OUT+="${INDENT}- label: \":terraform: Validate\""
   OUT+=$'\n'
-  OUT+=$(get_docker_block "validate ${TF_VALIDATE_ARGS}")
+  OUT+=$(get_docker_block "validate")
 fi
 
 if [ "$TF_PLAN" = "true" ]; then
   OUT+=$WAIT_STEP
-  OUT+="${INDENT}- label: Terraform plan"
+  OUT+="${INDENT}- label: \":terraform: Plan\""
   OUT+=$'\n'
-  OUT+=$(get_docker_block "plan ${TF_PLAN_ARGS}")
+  OUT+=$(get_docker_block "plan")
 fi
 
 if [ "$TF_APPLY" = "true" ]; then
@@ -109,14 +185,24 @@ if [ "$TF_APPLY" = "true" ]; then
   if [ -n "$BLOCK" ]; then
     OUT+=$BLOCK_STEP
   fi
-  OUT+="${INDENT}- label: Terraform apply"
+  OUT+="${INDENT}- label: \":terraform: Apply\""
   OUT+=$'\n'
-  OUT+=$(get_docker_block "apply ${TF_APPLY_ARGS}")
+  OUT+=$(get_docker_block "apply")
+fi
+
+if [ "$TF_DESTROY" = "true" ]; then
+  OUT+=$WAIT_STEP
+  if [ -n "$BLOCK" ]; then
+    OUT+=$BLOCK_STEP
+  fi
+  OUT+="${INDENT}- label: \":terraform: Destroy\""
+  OUT+=$'\n'
+  OUT+=$(get_docker_block "apply")
 fi
 
 echo "$OUT" 
 
 if [ "$PLUGIN_DEBUG" != "true" ]; then
-  echo "Uploading pipeline..."
+  echo "# Uploading pipeline..."
   echo "$OUT" | buildkite-agent pipeline upload
 fi
