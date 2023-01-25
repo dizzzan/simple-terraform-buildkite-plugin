@@ -162,3 +162,7 @@ Suppress `steps:` from the pipeline output
 ### `debug` (optional, boolean)
 Instead of uploading the pipeline, it will be printed out only. No steps will be run.
 > Default: false
+
+### `tag` (optional, string)
+Add a tag to generated artifacts and steps. Particularly useful when used in conjuction with `gantry-ml/foreach` plugin.
+> Default: null

@@ -18,17 +18,18 @@ TF_DESTROY_ARGS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DESTROY_ARGS:-}"
 PROPAGATE_AWS_AUTH_TOKENS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_AWS_CREDENTIALS:-true}"
 PROPAGATE_ENVIRONMENT="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_PROPAGATE_ENVIRONMENT:-true}"
 SUPPRESS_STEPS="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_SUPPRESS_STEPS:-false}"
-
+TAG="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TAG:-}"
+TAGDASH=$([ -n "$TAG" ] && echo "-${TAG}" || echo "")
+TAGBRACKET=$([ -n "$TAG" ] && echo "[$TAG]" || echo "")
 TF_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_TERRAFORM_VERSION:-latest}"
 DOCKER_VERSION="${BUILDKITE_PLUGIN_SIMPLE_TERRAFORM_DOCKER_VERSION:-latest}"
 DOCKER_PLUGIN_VERSION=$([ "$DOCKER_VERSION" = "latest" ] && echo "" || echo "#v${DOCKER_VERSION}")
-
 TOP_INDENT=$([ "$SUPPRESS_STEPS" ] && echo "  " || echo "")
 INDENT=$([ "$GROUP" ] && echo "${TOP_INDENT}    " || echo "${TOP_INDENT}")
 PLAN_FILE="plan.tfplan"
 
 WAIT_STEP=$'\n'$([ "$WAIT" = "true" ] && echo $'\n'"${INDENT}- wait" || echo "")$'\n\n'
-BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK}\""$'\n' || echo "")$'\n\n'
+BLOCK_STEP=$'\n'$([ -n "$BLOCK" ] && echo $'\n'"${INDENT}- block: \"${BLOCK} ${TAGBRACKET}\""$'\n' || echo "")$'\n\n'
 OUT="$([ "$SUPPRESS_STEPS" ] && echo "" || echo "steps:"$'\n'])"
 
 BK_UID="$(id -u)"
@@ -40,27 +41,27 @@ get_artifact_block() {
   case $command in 
     init)
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      compressed: terraform${TAGDASH}.tgz"
       echo "${INDENT}      upload: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
       ;;
     validate)
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      compressed: terraform"${TAGDASH}".tgz"
       echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
       ;;
     plan)
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      compressed: terraform"${TAGDASH}".tgz"
       echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
       echo "${INDENT}  artifact_paths:"
-      echo "${INDENT}    - \"${path}/plan.tfplan\""
+      echo "${INDENT}    - \"${path}/plan"${TAGDASH}".tfplan\""
       ;;
     apply)
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      compressed: terraform.tgz"
+      echo "${INDENT}      compressed: terraform"${TAGDASH}".tgz"
       echo "${INDENT}      download: [ \"${path}/.terraform\", \"${path}/.terraform.lock.hcl\" ]"
       echo "${INDENT}  - artifacts:"
-      echo "${INDENT}      download: \"deploy/roots/sandbox/plan.tfplan\""
+      echo "${INDENT}      download: \"deploy/roots/sandbox/plan"${TAGDASH}".tfplan\""
       ;;
     esac
 }
@@ -161,21 +162,21 @@ if [ -n "$GROUP" ]; then
 fi
 
 if [ "$TF_INIT" = "true" ]; then
-  OUT+="${INDENT}- label: Terraform init"
+  OUT+="${INDENT}- label: \":terraform: Init ${TAGBRACKET}\""
   OUT+=$'\n'
   OUT+=$(get_docker_block "init")
 fi
 
 if [ "$TF_VALIDATE" = "true" ]; then
   OUT+=$WAIT_STEP
-  OUT+="${INDENT}- label: \":terraform: Validate\""
+  OUT+="${INDENT}- label: \":terraform: Validate ${TAGBRACKET}\""
   OUT+=$'\n'
   OUT+=$(get_docker_block "validate")
 fi
 
 if [ "$TF_PLAN" = "true" ]; then
   OUT+=$WAIT_STEP
-  OUT+="${INDENT}- label: \":terraform: Plan\""
+  OUT+="${INDENT}- label: \":terraform: Plan ${TAGBRACKET}\""
   OUT+=$'\n'
   OUT+=$(get_docker_block "plan")
 fi
@@ -185,7 +186,7 @@ if [ "$TF_APPLY" = "true" ]; then
   if [ -n "$BLOCK" ]; then
     OUT+=$BLOCK_STEP
   fi
-  OUT+="${INDENT}- label: \":terraform: Apply\""
+  OUT+="${INDENT}- label: \":terraform: Apply ${TAGBRACKET}\""
   OUT+=$'\n'
   OUT+=$(get_docker_block "apply")
 fi
@@ -195,7 +196,7 @@ if [ "$TF_DESTROY" = "true" ]; then
   if [ -n "$BLOCK" ]; then
     OUT+=$BLOCK_STEP
   fi
-  OUT+="${INDENT}- label: \":terraform: Destroy\""
+  OUT+="${INDENT}- label: \":terraform: Destroy ${TAGBRACKET}\""
   OUT+=$'\n'
   OUT+=$(get_docker_block "apply")
 fi

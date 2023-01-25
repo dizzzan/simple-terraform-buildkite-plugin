@@ -48,6 +48,8 @@ configuration:
       type: boolean
     assume-role:
       type: string
+    tag:
+      type: string
   required:
     - path
   additionalProperties: true
